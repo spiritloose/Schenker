@@ -7,7 +7,6 @@ use HTTP::Engine::Middleware;
 use HTTPx::Dispatcher;
 use Carp qw(croak);
 use Scalar::Util qw(blessed);
-use List::MoreUtils qw(any);
 use Path::Class;
 use MIME::Types;
 use Schenker::Templates;
