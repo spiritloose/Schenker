@@ -2,11 +2,11 @@ package Schenker;
 use 5.00800;
 use base 'Exporter';
 use Any::Moose;
-use HTTPx::Dispatcher;
 use Carp qw(croak);
 use Scalar::Util qw(blessed);
 use Path::Class;
 use MIME::Types;
+use Schenker::Router;
 use Schenker::Engine;
 use Schenker::Templates;
 use Schenker::Halt;
@@ -25,13 +25,13 @@ our %Errors;
 our $MIMETypes;
 
 our @EXPORT = (qw/
-        get head post put Delete
         helpers Before error not_found define_error
         request response stash session status param params redirect
         back body content_type etag headers last_modified
         media_type mime attachment send_file
     /,
     @Schenker::Engine::EXPORT,
+    @Schenker::Router::EXPORT,
     @Schenker::Templates::EXPORT,
     @Schenker::Halt::EXPORT,
     @Schenker::Options::EXPORT,
@@ -102,59 +102,6 @@ sub make_session {
         sub { croak q/session is disabled. To enable session, set 'sessions' option true./ };
     }
 }
-
-sub route {
-    my $method = shift or croak 'method required';
-    my $path   = shift or croak 'path required';
-    my $action = pop   or croak 'action required';
-    croak 'action must be coderef' if ref $action ne 'CODE';
-    my %options = @_;
-    my $function;
-
-    if (my $host = $options{host} || $options{host_name}) {
-        $function = sub {
-            if (ref $host eq 'Regexp') {
-                request->uri->host =~ $host;
-            } else {
-                request->uri->host eq $host;
-            }
-        };
-    }
-
-    if (my $agent = $options{agent} || $options{user_agent}) {
-        my $orig_func = $function;
-        $function = sub {
-            if ($orig_func) {
-                $orig_func->() or return 0;
-            }
-            if (ref $agent eq 'Regexp') {
-                request->user_agent =~ $agent;
-            } else {
-                request->user_agent eq $agent;
-            }
-        };
-    }
-
-    $path =~ s|^/||;
-    connect $path => {
-        controller => __PACKAGE__,
-        action     => $action,
-        conditions => {
-            method => $method,
-            defined $function ? (function => $function) : (),
-        },
-    };
-}
-
-sub head { route 'HEAD', @_ }
-
-sub get { route ['GET', 'HEAD'], @_ }
-
-sub post { route 'POST', @_ }
-
-sub Delete { route 'DELETE', @_ }
-
-sub put { route 'PUT', @_ }
 
 sub helpers {
     croak 'usage: helpers $name => $code' if @_ % 2 != 0;
@@ -392,7 +339,7 @@ sub dispatch {
     local $@;
     local $SIG{__DIE__} = \&die_in_request;
     eval {
-        my $rule = Schenker->match($req) or route_missing;
+        my $rule = Schenker::Router->match($req) or route_missing;
         parse_nested_query;
         run_before_filters($rule);
         run_action($rule);
