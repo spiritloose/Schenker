@@ -8,7 +8,7 @@ use Getopt::Long qw(:config bundling no_ignore_case);
 
 our @EXPORT = qw(
     configure options set enable disable
-    development test production
+    development test production standalone
 );
 
 my $instance;
@@ -37,6 +37,10 @@ sub development { options->environment eq 'development' }
 sub test { options->environment eq 'test' }
 
 sub production { options->environment eq 'production' }
+
+sub standalone {
+    any { options->server eq $_ } qw(ServerSimple POE AnyEvent);
+}
 
 sub configure {
     my $code = pop or croak 'code required';

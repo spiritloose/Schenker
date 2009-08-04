@@ -416,10 +416,6 @@ sub dispatch {
     }
 }
 
-sub standalone {
-    any { options->server eq $_ } qw(ServerSimple POE AnyEvent);
-}
-
 sub install_builtin_middlewares {
     configure 'development' => sub {
         Use 'HTTP::Engine::Middleware::AccessLog' => {
