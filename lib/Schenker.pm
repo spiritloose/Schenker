@@ -38,13 +38,12 @@ our @EXPORT = (qw/
 );
 
 sub import {
-    croak q/Can't use Schenker twice./ if defined $App;
-
-    ($App, $AppFile) = caller;
-    croak <<'END_MSG' if defined $App and $App eq 'main';
+    my ($pkg, $file) = caller;
+    croak <<'END_MSG' if defined $pkg and $pkg eq 'main';
 Can't use Schenker in the 'main' package.
 Please use Schenker in your package.
 END_MSG
+    ($App, $AppFile) = ($pkg, $file) unless defined $App; # only first time
 
     __PACKAGE__->export_to_level(1, @_);
     any_moose->import({ into_level => 1 });
