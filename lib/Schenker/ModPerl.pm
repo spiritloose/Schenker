@@ -8,6 +8,7 @@ BEGIN {
 
 sub create_engine { $Schenker::Engine }
 
+no Any::Moose;
 __PACKAGE__->meta->make_immutable;
 1;
 __END__
