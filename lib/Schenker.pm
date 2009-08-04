@@ -4,8 +4,7 @@ use base 'Exporter';
 use Any::Moose;
 use Carp qw(croak);
 use Scalar::Util qw(blessed);
-use Path::Class;
-use MIME::Types;
+use Path::Class qw(file dir);
 use Schenker::Router;
 use Schenker::Engine;
 use Schenker::Templates;
@@ -13,6 +12,7 @@ use Schenker::Halt;
 use Schenker::Options;
 use Schenker::Error;
 use Schenker::NotFound;
+use Schenker::Helpers;
 
 our $VERSION = '0.01';
 
@@ -22,19 +22,19 @@ our $Initialized;
 our $Exited;
 our @Filters;
 our %Errors;
-our $MIMETypes;
 
 our @EXPORT = (qw/
         helpers Before error not_found define_error
         request response stash session status param params redirect
         back body content_type etag headers last_modified
-        media_type mime attachment send_file
+        attachment send_file
     /,
     @Schenker::Engine::EXPORT,
     @Schenker::Router::EXPORT,
     @Schenker::Templates::EXPORT,
     @Schenker::Halt::EXPORT,
     @Schenker::Options::EXPORT,
+    @Schenker::Helpers::EXPORT,
 );
 
 sub import {
@@ -58,8 +58,6 @@ sub unimport {
         delete ${"$caller\::"}{$method};
     }
 }
-
-sub mime_types { $MIMETypes ||= MIME::Types->new }
 
 sub request {
     croak 'cannot call request in not running server.';
@@ -205,23 +203,6 @@ sub last_modified {
     my $time = shift;
     headers->last_modified($time) if $time;
     headers->last_modified($time);
-}
-
-sub mime {
-    my ($ext, $type, $encoding, $system) = @_;
-    croak 'usage: mime $ext => $type' if !defined $ext or !defined $type;
-    my $extensions = ref $ext eq 'ARRAY' ? $ext : [$ext];
-    mime_types->addType(MIME::Type->new(
-        type       => $type,
-        extensions => $extensions,
-        defined $encoding ? (encoding => $encoding) : (),
-        defined $system   ? (system   => $system)   : (),
-    ));
-}
-
-sub media_type {
-    my $ext = shift or croak 'ext required';
-    mime_types->mimeTypeOf($ext);
 }
 
 sub define_error {
