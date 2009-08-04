@@ -29,12 +29,16 @@ our %Errors;
 our $MIMETypes;
 
 our @EXPORT = (qw/
-    get head post put Delete
-    Use helpers Before error not_found define_error
-    request response stash session status param params redirect halt
-    back body content_type etag headers last_modified
-    media_type mime attachment send_file
-/, @Schenker::Options::EXPORT, @Schenker::Templates::EXPORT);
+        get head post put Delete
+        Use helpers Before error not_found define_error
+        request response stash session status param params redirect
+        back body content_type etag headers last_modified
+        media_type mime attachment send_file
+    /,
+    @Schenker::Templates::EXPORT,
+    @Schenker::Halt::EXPORT,
+    @Schenker::Options::EXPORT,
+);
 
 sub import {
     croak q/Can't use Schenker twice./ if defined $App;
@@ -178,10 +182,6 @@ sub Before {
     my $code = shift or croak 'code required';
     croak 'code must be coderef' if ref $code ne 'CODE';
     push @Filters, $code;
-}
-
-sub halt {
-    Schenker::Halt->halt(@_);
 }
 
 sub error {

@@ -1,8 +1,11 @@
 package Schenker::Halt;
 use Any::Moose;
+use base 'Exporter';
 use overload
     '""'   => \&as_string,
     'bool' => sub { 1 };
+
+our @EXPORT = qw(halt);
 
 has status => (
     is  => 'ro',
@@ -27,9 +30,7 @@ sub BUILDARGS {
 }
 
 sub halt {
-    my $class = shift;
-    my $self = $class->new(@_);
-    die $self;
+    die __PACKAGE__->new(@_);
 }
 
 sub as_string {
