@@ -9,7 +9,6 @@ use Carp qw(croak);
 use Scalar::Util qw(blessed);
 use List::MoreUtils qw(any);
 use Path::Class;
-use Getopt::Long;
 use MIME::Types;
 use Schenker::Templates;
 use Schenker::Halt;
@@ -419,57 +418,6 @@ sub dispatch {
     }
 }
 
-sub usage {
-    my $exit_code = shift || 0;
-    print STDERR <<"END_USAGE";
-Usage: $0 [OPTIONS]
-    -h, --help              display this help
-    -H, --host              set the host (default is 0.0.0.0)
-    -p, --port=PORT         set the port (default is 4567)
-    -e, --environment=ENV   set the environment (default is development)
-    -s, --server=SERVER     specify HTTP::Engine interface (default is ServerSimple)
-    -l, --listen=LISTEN     Socket path to listen on
-                            (defaults to standard input)
-                            can be HOST:PORT, :PORT or a filesystem path.
-    -n, --nproc=NUM         specify number of processes to keep to serve requests.
-                            (defaults to 1, requires --listen)
-    -P, --pidfile=FILE      specify filename for pid file (requres --listen)
-    -d, --daemon            daemonize (requires --listen)
-    -M, --manager=MANAGER   specify alternate process manager
-                            (FCGI::ProcManager sub-class) or empty string to disable
-    -E, --keeperr           send error messages to STDOUT, not to the webserver
-END_USAGE
-    $Exited = 1;
-    exit $exit_code;
-}
-
-sub parse_options {
-    Getopt::Long::Configure qw(bundling no_ignore_case);
-
-    my %options = (
-        help        => 'h',
-        host        => 'H=s',
-        port        => 'p=i',
-        environment => 'e=s',
-        server      => 's=s',
-        listen      => 'l=s',
-        nproc       => 'n=i',
-        pidfile     => 'P=s',
-        daemon      => 'd',
-        manager     => 'M=s',
-        keeperr     => 'E',
-    );
-
-    my $conf = {};
-    GetOptions($conf, map { "$_|$options{$_}" } keys %options) or usage 1;
-
-    usage 0 if exists $conf->{help};
-
-    for my $key (keys %options) {
-        set $key => $conf->{$key} if exists $conf->{$key};
-    }
-}
-
 sub standalone {
     any { options->server eq $_ } qw(ServerSimple POE AnyEvent);
 }
@@ -567,6 +515,11 @@ sub run {
     run_engine(@_);
 }
 
+sub exit {
+    $Exited = 1;
+    CORE::exit(shift);
+}
+
 sub run_at_end {
     $? == 0      or  return; # compile error, die(), exit() with non-zero value
     defined $App or  return; # run this file as script
@@ -637,7 +590,7 @@ configure sub {
         disable 'run';
     }
 
-    parse_options;
+    Schenker::Options->parse_argv;
 
     configure development => sub {
         Before sub {
