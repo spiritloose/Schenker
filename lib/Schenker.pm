@@ -26,9 +26,7 @@ our $Exited;
 our $Middleware;
 our @Filters;
 our %Errors;
-our %Templates;
 our $MIMETypes;
-our %TTOptions;
 
 our @EXPORT = (qw/
     get head post put Delete
