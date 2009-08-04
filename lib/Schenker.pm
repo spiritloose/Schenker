@@ -25,7 +25,6 @@ our $Engine;
 our $Initialized;
 our $Exited;
 our $Middleware;
-our $Options;
 our @Filters;
 our %Errors;
 our %Templates;
@@ -34,13 +33,11 @@ our %TTOptions;
 
 our @EXPORT = (qw/
     get head post put Delete
-    options set enable disable configure
-    development test production
     Use helpers Before error not_found define_error
     request response stash session status param params redirect halt
     back body content_type etag headers last_modified
     media_type mime attachment send_file
-/, @Schenker::Templates::EXPORT);
+/, @Schenker::Options::EXPORT, @Schenker::Templates::EXPORT);
 
 sub import {
     croak q/Can't use Schenker twice./ if defined $App;
@@ -63,8 +60,6 @@ sub unimport {
         delete ${"$caller\::"}{$method};
     }
 }
-
-sub options { $Options ||= Schenker::Options->new }
 
 sub middleware {
     $Middleware ||= HTTP::Engine::Middleware->new(
@@ -173,34 +168,6 @@ sub post { route 'POST', @_ }
 sub Delete { route 'DELETE', @_ }
 
 sub put { route 'PUT', @_ }
-
-sub set {
-    croak 'usage: set $option => $value' if @_ % 2 != 0;
-    options->set(@_);
-}
-
-sub enable {
-    my $option = shift or croak 'option required';
-    set $option => 1;
-}
-
-sub disable {
-    my $option = shift or croak 'option required';
-    set $option => 0;
-}
-
-sub development { options->environment eq 'development' }
-
-sub test { options->environment eq 'test' }
-
-sub production { options->environment eq 'production' }
-
-sub configure {
-    my $code = pop or croak 'code required';
-    croak 'code must be coderef' if ref $code ne 'CODE';
-    my @envs = @_;
-    $code->() if @envs == 0 or any { $_ eq options->environment } @envs;
-}
 
 sub helpers {
     croak 'usage: helpers $name => $code' if @_ % 2 != 0;
