@@ -1,9 +1,10 @@
 package MyApp;
 use strict;
-use Test::More tests => 48;
+use Test::More tests => 49;
 
 BEGIN {
     use_ok 'Schenker';
+    use_ok 'Schenker::Engine';
     use_ok 'Schenker::Templates';
     use_ok 'Schenker::Options';
     use_ok 'Schenker::Error';

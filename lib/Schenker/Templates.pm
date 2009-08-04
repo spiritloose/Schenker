@@ -3,10 +3,7 @@ use base 'Exporter';
 use Any::Moose;
 use Carp qw(croak);
 
-our @EXPORT = qw(
-    template parse_in_file_templates
-    tt tt_options mt mt_options
-);
+our @EXPORT = qw(template tt tt_options mt mt_options);
 
 our %Templates;
 

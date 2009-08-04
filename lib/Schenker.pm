@@ -2,13 +2,12 @@ package Schenker;
 use 5.00800;
 use base 'Exporter';
 use Any::Moose;
-use HTTP::Engine;
-use HTTP::Engine::Middleware;
 use HTTPx::Dispatcher;
 use Carp qw(croak);
 use Scalar::Util qw(blessed);
 use Path::Class;
 use MIME::Types;
+use Schenker::Engine;
 use Schenker::Templates;
 use Schenker::Halt;
 use Schenker::Options;
@@ -19,21 +18,20 @@ our $VERSION = '0.01';
 
 our $App;
 our $AppFile;
-our $Engine;
 our $Initialized;
 our $Exited;
-our $Middleware;
 our @Filters;
 our %Errors;
 our $MIMETypes;
 
 our @EXPORT = (qw/
         get head post put Delete
-        Use helpers Before error not_found define_error
+        helpers Before error not_found define_error
         request response stash session status param params redirect
         back body content_type etag headers last_modified
         media_type mime attachment send_file
     /,
+    @Schenker::Engine::EXPORT,
     @Schenker::Templates::EXPORT,
     @Schenker::Halt::EXPORT,
     @Schenker::Options::EXPORT,
@@ -59,12 +57,6 @@ sub unimport {
     for my $method (@EXPORT) {
         delete ${"$caller\::"}{$method};
     }
-}
-
-sub middleware {
-    $Middleware ||= HTTP::Engine::Middleware->new(
-        method_class => 'HTTP::Engine::Request',
-    );
 }
 
 sub mime_types { $MIMETypes ||= MIME::Types->new }
@@ -109,11 +101,6 @@ sub make_session {
     } else {
         sub { croak q/session is disabled. To enable session, set 'sessions' option true./ };
     }
-}
-
-sub Use {
-    croak 'module required' if @_ == 0;
-    middleware->install(@_);
 }
 
 sub route {
@@ -415,27 +402,6 @@ sub dispatch {
     }
 }
 
-sub install_builtin_middlewares {
-    configure 'development' => sub {
-        Use 'HTTP::Engine::Middleware::AccessLog' => {
-            logger => sub { print STDERR @_, "\n" },
-        } if standalone;
-    };
-
-    Use 'HTTP::Engine::Middleware::Static' => {
-        regexp  => qr{^/(.*)$},
-        docroot => options->public,
-        is_404_handler => 0,
-    } if options->static;
-
-    Use 'HTTP::Engine::Middleware::MethodOverride' if options->methodoverride;
-
-    Use 'HTTP::Engine::Middleware::Encode' => options->encode;
-
-    Use 'HTTP::Engine::Middleware::HTTPSession' => options->session_options
-            if options->sessions;
-}
-
 sub request_handler {
     my $req = shift;
     my $res = HTTP::Engine::Response->new;
@@ -443,69 +409,16 @@ sub request_handler {
     $res;
 }
 
-sub init_engine {
-    my $args = do {
-        if (standalone) {
-            +{
-                host => options->host,
-                port => options->port,
-            };
-        } elsif (options->server eq 'FCGI') {
-            +{
-                defined options->listen  ? (listen      => options->listen)  : (),
-                defined options->nproc   ? (nproc       => options->nproc)   : (),
-                defined options->pidfile ? (pidfile     => options->pidfile) : (),
-                defined options->daemon  ? (detach      => options->daemon)  : (),
-                defined options->manager ? (manager     => options->manager) : (),
-                defined options->keeperr ? (keep_stderr => options->keeperr) : (),
-            };
-        } else {
-            +{};
-        }
-    };
-    $Engine = HTTP::Engine->new(
-        interface => {
-            module => options->server,
-            args   => $args,
-            request_handler => middleware->handler(\&request_handler),
-        }
-    );
-}
-
-sub print_banner {
-    return unless standalone;
-    print STDERR "== Schenker/$VERSION has taken the stage on @{[options->port]} " .
-            "for @{[options->environment]} with backup from @{[options->server]}\n";
-}
-
-sub init_signal {
-    return unless standalone;
-    $SIG{INT} = $SIG{QUIT} = $SIG{TERM} = sub {
-        print STDERR "\n== Schenker has ended his set (crowd applauds)\n";
-        exit;
-    };
-}
-
-sub run_engine {
-    my $res = $Engine->run(@_);
-    POE::Kernel->run if options->server eq 'POE';
-    AnyEvent->condvar->recv if options->server eq 'AnyEvent';
-    $res;
-}
-
 sub init {
     $Initialized and return;
-    parse_in_file_templates;
-    install_builtin_middlewares;
-    init_engine;
-    init_signal;
+    Schenker::Templates->parse_in_file_templates;
+    Schenker::Engine->init(\&request_handler);
     $Initialized = 1;
 }
 
 sub run {
     init;
-    print_banner;
-    run_engine(@_);
+    Schenker::Engine->run(@_);
 }
 
 sub exit {
