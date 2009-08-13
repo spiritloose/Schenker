@@ -5,6 +5,8 @@ use Any::Moose;
 use Carp qw(croak);
 use Scalar::Util qw(blessed);
 use Path::Class qw(file dir);
+use Encode qw(decode);
+use URI::Escape qw(uri_unescape);
 use Schenker::Router;
 use Schenker::Engine;
 use Schenker::Templates;
@@ -247,6 +249,13 @@ sub send_file {
     halt $body;
 }
 
+sub decode_args {
+    my $args = shift;
+    while (my ($key, $val) = each %$args) {
+        $args->{$key} = decode(options->encode->{decode}, uri_unescape($val));
+    }
+}
+
 sub run_action {
     my $rule = shift;
     my $action = $rule->{action};
@@ -321,6 +330,7 @@ sub dispatch {
     eval {
         my $rule = Schenker::Router->match($req) or route_missing;
         parse_nested_query;
+        decode_args($rule->{args});
         run_before_filters($rule);
         run_action($rule);
     };
