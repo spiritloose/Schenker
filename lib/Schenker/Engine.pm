@@ -96,6 +96,7 @@ sub init {
 
 sub run {
     my $class = shift;
+    print_banner;
     my $res = $engine->run(@_);
     POE::Kernel->run if options->server eq 'POE';
     AnyEvent->condvar->recv if options->server eq 'AnyEvent';
